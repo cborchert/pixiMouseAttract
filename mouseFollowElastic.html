@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title></title>
+<body>
+<script src="pixi.min.js"></script>
+<script>
+
+    //Test that Pixi is working
+    console.log(PIXI);
+    
+    var renderer = PIXI.autoDetectRenderer(256, 256),
+        stage = new PIXI.Container(),
+        interaction = new PIXI.interaction.InteractionManager( renderer ),
+        smile, 
+        velocityFollow = 1;
+    
+    renderer.autoResize = true;
+    renderer.backgroundColor = 0xEEEEEE;
+    renderer.resize(512, 512);
+    
+    document.body.appendChild( renderer.view );
+    
+    
+    renderer.render(stage);
+    
+    PIXI.loader.add("smile.png").load( setup );
+    
+    function setup() {
+        
+        smile = new PIXI.Sprite( PIXI.loader.resources["smile.png"].texture );
+        
+        smile.anchor.set( 0.5, 0.5 );
+//        smile.pivot.set( smile.width/2, smile.height/2);
+        smile.x = renderer.width/2;
+        smile.y = renderer.height/2;
+        stage.addChild( smile );
+    
+        renderer.render(stage);
+ 
+        animationLoop();
+        
+    }
+    
+    function animationLoop() {
+        
+        requestAnimationFrame( animationLoop );
+        
+        
+        
+        smile.x += Math.sqrt( Math.abs(interaction.mouse.global.x - smile.x) ) * Math.sign( interaction.mouse.global.x - smile.x ) * velocityFollow;
+        smile.y += Math.sqrt( Math.abs(interaction.mouse.global.y - smile.y) ) * Math.sign( interaction.mouse.global.y - smile.y ) * velocityFollow;
+        
+        
+        renderer.render(stage);
+        
+    }
+    
+    
+</script>
+</body>
