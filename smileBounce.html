@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title></title>
+<body>
+<script src="pixi.min.js"></script>
+<script>
+
+    var renderer = PIXI.autoDetectRenderer(256, 256),
+        stage = new PIXI.Container(),
+        interaction = new PIXI.interaction.InteractionManager( renderer ),
+        smileTexture, 
+        smiles = [],
+        velocityFollow = 1;
+    
+    renderer.autoResize = true;
+    renderer.backgroundColor = 0xEEEEEE;
+    renderer.resize(512, 512);
+    
+    document.body.appendChild( renderer.view );
+    renderer.render(stage);
+    
+    PIXI.loader.add("smile.png").load( setup );
+    
+    function setup() {
+        
+        smileTexture = PIXI.loader.resources["smile.png"].texture;
+        
+        //create Smiles
+        for (var i=0; i < 10; i++) {
+		
+            smiles.push( createSmile(Math.random() * renderer.width, Math.random() * renderer.height) );
+        
+        }
+        
+        animationLoop();
+        
+    }
+    
+    function createSmile(x, y) {
+		
+        var smile = new PIXI.Sprite(smileTexture);
+
+        smile.anchor.set( 0.5, 0.5 );
+        
+		// move the sprite to its designated position and set up original distance
+		smile.x = x;
+		smile.y = y;
+        smile.originx = smile.x;
+        smile.originy = smile.y;
+        
+        smile.velocity = {x: 0, y: 0}
+        //Set velocity x and y to zero
+        smile.velocity.x = 0;
+        smile.velocity.y = 0;
+        
+        smile.gravity = true;
+		
+		// add it to the stage
+		stage.addChild( smile );
+        
+        return smile;
+        
+	}
+    
+    function animationLoop() {
+        
+        requestAnimationFrame( animationLoop );
+        
+        smiles.forEach( function( smile, i ) {
+           
+            
+            if( smile.gravity ){
+                
+                smile.velocity.y += 1;
+            
+            }
+            //Add to velocity toward the ground
+            
+            if( ( smile.y + smile.height/2 ) >= renderer.height ){
+            
+                if( smile.velocity.y <= 2 ) {
+                    
+                    smile.velocity.y = 0;
+                    smile.y = renderer.height - smile.height/2;
+                    
+                } else {
+                
+                    smile.y = renderer.height - smile.height/2 - 1;
+                    smile.velocity.y = smile.velocity.y * -0.5;
+                    
+                }
+            
+            }
+            
+            smile.y += smile.velocity.y;
+            
+            //if velocity is small enough, stop it
+            
+        });
+        
+        
+        
+        renderer.render(stage);
+        
+    }
+    
+    
+</script>
+</body>
