@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title></title>
+<body>
+<script src="pixi.min.js"></script>
+<script>
+
+    var renderer = PIXI.autoDetectRenderer(256, 256),
+        stage = new PIXI.Container(),
+        interaction = new PIXI.interaction.InteractionManager( renderer ),
+        smileTexture, 
+        smiles = [],
+        velocityFollow = 1;
+    
+    renderer.autoResize = true;
+    renderer.backgroundColor = 0xEEEEEE;
+    renderer.resize(512, 512);
+    
+    document.body.appendChild( renderer.view );
+    
+    
+    renderer.render(stage);
+    
+    PIXI.loader.add("smile.png").load( setup );
+    
+    function setup() {
+        
+        smileTexture = PIXI.loader.resources["smile.png"].texture;
+        
+        //create Smiles
+        for (var i=0; i < 10; i++) {
+		
+            smiles.push( createSmile(Math.random() * window.innerWidth, Math.random() * window.innerHeight) );
+        
+        }
+ 
+        console.log(smiles);
+        animationLoop();
+        
+    }
+    
+    function createSmile(x, y) {
+		
+        var smile = new PIXI.Sprite(smileTexture);
+		
+		// allow it to respond to mouse and touch events		
+		smile.interactive = true;
+		// this button mode will mean the hand cursor appears when you rollover the smile with your mouse
+		smile.buttonMode = true;
+        
+        smile.anchor.set( 0.5, 0.5 );
+        
+		// use the mousedown and touchstart
+		smile.mousedown = smile.touchstart = function(data) {
+	
+			// store a reference to the data
+			// The reason for this is because of multitouch
+			// we want to track the movement of this particular touch
+			this.data = data;
+			this.alpha = 0.9;
+			this.dragging = true;
+            
+            this.originx = smile.x;
+            this.originy = smile.y;
+            
+            this.sx = smile.x;
+            this.sy = smile.y;
+            
+        };
+		
+		// set the events for when the mouse is released or a touch is released
+		smile.mouseup = smile.mouseupoutside = smile.touchend = smile.touchendoutside = function(data) {
+            
+			this.alpha = 1
+			this.dragging = false;
+			// set the interaction data to null
+			this.data = null;
+            
+		};
+		
+		// move the sprite to its designated position
+		smile.x = x;
+		smile.y = y;
+        smile.originx = smile.x;
+        smile.originy = smile.y;
+		
+		// add it to the stage
+		stage.addChild( smile );
+        
+        return smile;
+        
+	}
+    
+    function animationLoop() {
+        
+        requestAnimationFrame( animationLoop );
+        
+        renderer.render(stage);
+        
+        smiles.forEach( function( smile, i ) {
+           
+            if( smile.dragging ) {
+             
+                var diffX = interaction.mouse.global.x - smile.x,
+                diffY = interaction.mouse.global.y - smile.y;
+
+                //Attracted by the square root of distance 
+                smile.x += Math.sqrt( Math.abs( diffX ) ) * Math.sign( diffX ) * velocityFollow;
+                smile.y += Math.sqrt( Math.abs( diffY ) ) * Math.sign( diffY ) * velocityFollow;
+                
+                
+            } else {
+                
+//                console.log( smile.originx );
+                var diffX = smile.originx - smile.x,
+                diffY = smile.originy - smile.y;
+
+                //Attracted by the square root of distance 
+                smile.x += Math.sqrt( Math.abs( diffX ) ) * Math.sign( diffX ) * velocityFollow;
+                smile.y += Math.sqrt( Math.abs( diffY ) ) * Math.sign( diffY ) * velocityFollow;
+                
+            }
+            
+            
+        });
+        
+    }
+    
+    
+</script>
+</body>

@@ -45,11 +45,12 @@
         
         requestAnimationFrame( animationLoop );
         
+        var diffX = interaction.mouse.global.x - smile.x,
+            diffY = interaction.mouse.global.y - smile.y;
         
-        
-        smile.x += Math.sqrt( Math.abs(interaction.mouse.global.x - smile.x) ) * Math.sign( interaction.mouse.global.x - smile.x ) * velocityFollow;
-        smile.y += Math.sqrt( Math.abs(interaction.mouse.global.y - smile.y) ) * Math.sign( interaction.mouse.global.y - smile.y ) * velocityFollow;
-        
+        //Attracted by the square root of distance 
+        smile.x += Math.sqrt( Math.abs( diffX ) ) * Math.sign( diffX ) * velocityFollow;
+        smile.y += Math.sqrt( Math.abs( diffY ) ) * Math.sign( diffY ) * velocityFollow;
         
         renderer.render(stage);
         
