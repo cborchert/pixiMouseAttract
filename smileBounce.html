@@ -10,7 +10,8 @@
         interaction = new PIXI.interaction.InteractionManager( renderer ),
         smileTexture, 
         smiles = [],
-        velocityFollow = 1;
+        velocityFollow = 1,
+        gravity = 0.5;
     
     renderer.autoResize = true;
     renderer.backgroundColor = 0xEEEEEE;
@@ -71,14 +72,14 @@
             
             if( smile.gravity ){
                 
-                smile.velocity.y += 1;
+                smile.velocity.y += gravity;
             
             }
             //Add to velocity toward the ground
             
             if( ( smile.y + smile.height/2 ) >= renderer.height ){
             
-                if( smile.velocity.y <= 2 ) {
+                if( smile.velocity.y <= 5*gravity ) {
                     
                     smile.velocity.y = 0;
                     smile.y = renderer.height - smile.height/2;
