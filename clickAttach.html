@@ -17,8 +17,6 @@
     renderer.resize(512, 512);
     
     document.body.appendChild( renderer.view );
-    
-    
     renderer.render(stage);
     
     PIXI.loader.add("smile.png").load( setup );
@@ -33,8 +31,7 @@
             smiles.push( createSmile(Math.random() * window.innerWidth, Math.random() * window.innerHeight) );
         
         }
- 
-        console.log(smiles);
+        
         animationLoop();
         
     }
@@ -53,18 +50,10 @@
 		// use the mousedown and touchstart
 		smile.mousedown = smile.touchstart = function(data) {
 	
-			// store a reference to the data
-			// The reason for this is because of multitouch
-			// we want to track the movement of this particular touch
-			this.data = data;
 			this.alpha = 0.9;
 			this.dragging = true;
-            
-            this.originx = smile.x;
-            this.originy = smile.y;
-            
-            this.sx = smile.x;
-            this.sy = smile.y;
+//            this.originx = smile.x;
+//            this.originy = smile.y;
             
         };
 		
@@ -73,12 +62,10 @@
             
 			this.alpha = 1
 			this.dragging = false;
-			// set the interaction data to null
-			this.data = null;
             
 		};
 		
-		// move the sprite to its designated position
+		// move the sprite to its designated position and set up original distance
 		smile.x = x;
 		smile.y = y;
         smile.originx = smile.x;
@@ -95,34 +82,34 @@
         
         requestAnimationFrame( animationLoop );
         
-        renderer.render(stage);
-        
         smiles.forEach( function( smile, i ) {
            
             if( smile.dragging ) {
              
-                var diffX = interaction.mouse.global.x - smile.x,
-                diffY = interaction.mouse.global.y - smile.y;
-
-                //Attracted by the square root of distance 
-                smile.x += Math.sqrt( Math.abs( diffX ) ) * Math.sign( diffX ) * velocityFollow;
-                smile.y += Math.sqrt( Math.abs( diffY ) ) * Math.sign( diffY ) * velocityFollow;
-                
+                smile.x += getCoordintateChange( smile.x, interaction.mouse.global.x );
+                smile.y += getCoordintateChange( smile.y, interaction.mouse.global.y );
                 
             } else {
                 
-//                console.log( smile.originx );
-                var diffX = smile.originx - smile.x,
-                diffY = smile.originy - smile.y;
-
-                //Attracted by the square root of distance 
-                smile.x += Math.sqrt( Math.abs( diffX ) ) * Math.sign( diffX ) * velocityFollow;
-                smile.y += Math.sqrt( Math.abs( diffY ) ) * Math.sign( diffY ) * velocityFollow;
+                smile.x += getCoordintateChange( smile.x, smile.originx );
+                smile.y += getCoordintateChange( smile.y, smile.originy );
                 
             }
             
             
         });
+        
+        renderer.render(stage);
+        
+    }
+    
+    function getCoordintateChange( orig, attract ) {
+        
+        //Attracted by the square root of distance between original point and point of attraction
+        var diff = attract - orig,
+            change = Math.sqrt( Math.abs( diff ) ) * Math.sign( diff ) * velocityFollow;
+        
+        return change;
         
     }
     
