@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title></title>
+<body>
+<script src="pixi.min.js"></script>
+<script>
+
+    var renderer = PIXI.autoDetectRenderer(256, 256),
+        stage = new PIXI.Container(),
+        interaction = new PIXI.interaction.InteractionManager( renderer ),
+        smileTexture, 
+        smiles = [],
+        velocityFollow = 1,
+        gravity = 0.5;
+    
+    renderer.autoResize = true;
+    renderer.backgroundColor = 0xEEEEEE;
+    renderer.resize(512, 512);
+    
+    document.body.appendChild( renderer.view );
+    renderer.render(stage);
+    
+    PIXI.loader.add("smile.png").load( setup );
+   
+    function setup() {
+        
+        smileTexture = PIXI.loader.resources["smile.png"].texture;
+        
+        //create Smiles
+        for (var i=0; i < 10; i++) {
+		
+            smiles.push( createSmile(Math.random() * renderer.width, Math.random() * renderer.height) );
+        
+        }
+        
+        animationLoop();
+        
+    }
+    
+    function createSmile(x, y) {
+		
+        var smile = new PIXI.Sprite(smileTexture);
+
+        smile.anchor.set( 0.5, 0.5 );
+        
+        smile = makeSpriteInteractive( smile );
+		smile = setSpriteInitials( smile, x, y, 0, 0, true, false );
+		
+		// add it to the stage
+		stage.addChild( smile );
+        
+        return smile;
+        
+	}
+    
+    function animationLoop() {
+        
+        requestAnimationFrame( animationLoop );
+        
+        smiles.forEach( function( smile, i ) {
+            
+            //Add to velocity toward the ground
+            if( smile.gravity ){
+                
+                smile.velocity.y += gravity;
+            
+            }
+            
+            //Bounce Behavior Floor
+            if( ( smile.y + smile.height/2 ) >= renderer.height ){
+            
+                if( smile.velocity.y <= 5*gravity ) {
+                
+                    //Ball moving slow enough, stop it
+                    smile.velocity.y = 0;
+                    smile.y = renderer.height - smile.height/2;
+                    
+                } else {
+                
+                    //Bounce
+                    smile.y = renderer.height - smile.height/2 - 1;
+                    smile.velocity.y = smile.velocity.y * -0.5;
+                    
+                }
+                
+                smile.velocity.x -= ( smile.velocity.x * 0.05);
+                if( Math.abs(smile.velocity.x) <= 0.5 ) {
+                    
+                    smile.velocity.x = 0;
+                    
+                }
+            
+            }
+            
+            if( ( smile.x + smile.width/2 ) >= renderer.width ){
+            
+                    //Bounce
+                    smile.x = renderer.width - smile.width/2 - 1;
+                    smile.velocity.x = smile.velocity.x * -0.5;
+            
+            }
+            
+            if( ( smile.x - smile.width/2 ) <= 0 ){
+            
+                    //Bounce
+                    smile.x = smile.width/2 + 1;
+                    smile.velocity.x = smile.velocity.x * -0.5;
+            
+            }
+            
+            if( smile.attractedToMouse ) {
+             
+//                smile.velocity.x += getCoordintateChange( smile.x, interaction.mouse.global.x );
+//                smile.velocity.y += getCoordintateChange( smile.y, interaction.mouse.global.y );
+                if( Math.abs(interaction.mouse.global.x - smile.x) < 2 ) {
+                    
+                    smile.velocity.x = 0;
+                    smile.x = interaction.mouse.global.x;
+                    
+                } else if( Math.abs(interaction.mouse.global.x - smile.x) <= Math.abs( smile.velocity.x ) ) {
+                    
+                     smile.velocity.x = Math.sign( interaction.mouse.global.x - smile.x );
+                    
+                } else {
+                
+                    smile.velocity.x += Math.sign( interaction.mouse.global.x - smile.x );
+                    
+                }
+                
+                if( Math.abs(interaction.mouse.global.y - smile.y) < 2 ) {
+                    
+                    smile.velocity.y = 0;
+                    smile.y = interaction.mouse.global.y;
+                    
+                } else if( Math.abs(interaction.mouse.global.y - smile.y) <= Math.abs( smile.velocity.y ) ) {
+                    
+                     smile.velocity.y = Math.sign( interaction.mouse.global.y - smile.y );
+                    
+                } else {
+                
+                    smile.velocity.y += Math.sign( interaction.mouse.global.y - smile.y );
+                    
+                }
+                
+            } 
+            
+            if( smile.attractedToOrigin ) {
+                
+//                smile.velocity.x += getCoordintateChange( smile.x, smile.originx );
+//                smile.velocity.y += getCoordintateChange( smile.y, smile.originy );
+                
+            }
+            
+            smile.y += smile.velocity.y;
+            smile.x += smile.velocity.x;
+            
+            
+        });
+        
+        
+        
+        renderer.render(stage);
+        
+    }
+    
+    function makeSpriteInteractive( sprite ) {
+        
+        
+        // interactive allows it to respond to mouse and touch events	
+        // button mode will mean the hand cursor appears when you rollover the sprite with your mouse
+		sprite.interactive = true;
+		sprite.buttonMode = true;
+        
+        // use the mousedown and touchstart
+		sprite.mousedown = sprite.touchstart = function(data) {
+	
+			sprite.alpha = 0.9;
+			sprite.dragging = true;
+            sprite.attractedToMouse = true;
+            sprite.attractedToOrigin = false;
+            sprite.gravity = false;
+            
+        };
+        
+        // set the events for when the mouse is released or a touch is released
+		sprite.mouseup = sprite.mouseupoutside = sprite.touchend = sprite.touchendoutside = function(data) {
+            
+			sprite.alpha = 1
+			sprite.dragging = false;
+            sprite.attractedToMouse = sprite.attractToOrigin;
+            sprite.gravity = true;
+            
+		};
+        
+        return sprite;
+        
+    }
+    
+    function setSpriteInitials( sprite, x, y, vx, vy, gravityOn, attractToOrigin ){
+    
+        // move the sprite to its designated position and set up original distance
+		sprite.x = x;
+		sprite.y = y;
+        sprite.originx = x;
+        sprite.originy = y;
+        sprite.velocity = {x: vx, y: vy};
+        sprite.gravity = gravityOn;
+        sprite.attractToOrigin = attractToOrigin;
+        sprite.attractedToOrigin = attractToOrigin;
+        
+        return sprite;
+        
+    }
+    
+    function getCoordintateChange( orig, attract ) {
+        
+        //Attracted by the square root of distance between original point and point of attraction
+        var diff = attract - orig,
+            change = Math.sqrt( Math.abs( diff ) ) * Math.sign( diff ) * velocityFollow;
+        
+        return change;
+        
+    }
+</script>
+</body>
