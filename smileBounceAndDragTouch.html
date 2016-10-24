@@ -15,7 +15,7 @@
     
     renderer.autoResize = true;
     renderer.backgroundColor = 0xEEEEEE;
-    renderer.resize(512, 512);
+    renderer.resize(window.innerWidth, window.innerHeight);
     
     document.body.appendChild( renderer.view );
     renderer.render(stage);
@@ -42,9 +42,11 @@
         var smile = new PIXI.Sprite(smileTexture);
 
         smile.anchor.set( 0.5, 0.5 );
+        smile.scale.x = 2;
+        smile.scale.y = 2;
         
         smile = makeSpriteInteractive( smile );
-		smile = setSpriteInitials( smile, x, y, 0, 0, true, true, true );
+		smile = setSpriteInitials( smile, x, y, 0, 0, true, false, true );
 		
 		// add it to the stage
 		stage.addChild( smile );
@@ -109,36 +111,38 @@
             }
             
             if( smile.attractedToMouse ) {
+                
+                console.log( interaction.eventData.data );
              
-//                smile.velocity.x += getCoordintateChange( smile.x, interaction.mouse.global.x );
-//                smile.velocity.y += getCoordintateChange( smile.y, interaction.mouse.global.y );
-                if( Math.abs(interaction.mouse.global.x - smile.x) < 2 ) {
+//                smile.velocity.x += getCoordintateChange( smile.x, interaction.eventData.data.global.x );
+//                smile.velocity.y += getCoordintateChange( smile.y, interaction.eventData.data.global.y );
+                if( Math.abs(interaction.eventData.data.global.x - smile.x) < 2 ) {
                     
                     smile.velocity.x = 0;
-                    smile.x = interaction.mouse.global.x;
+                    smile.x = interaction.eventData.data.global.x;
                     
-                } else if( Math.abs(interaction.mouse.global.x - smile.x) <= Math.abs( smile.velocity.x ) ) {
+                } else if( Math.abs(interaction.eventData.data.global.x - smile.x) <= Math.abs( smile.velocity.x ) ) {
                     
-                     smile.velocity.x = Math.sign( interaction.mouse.global.x - smile.x );
+                     smile.velocity.x = Math.sign( interaction.eventData.data.global.x - smile.x );
                     
                 } else {
                 
-                    smile.velocity.x += Math.sign( interaction.mouse.global.x - smile.x );
+                    smile.velocity.x += Math.sign( interaction.eventData.data.global.x - smile.x );
                     
                 }
                 
-                if( Math.abs(interaction.mouse.global.y - smile.y) < 2 ) {
+                if( Math.abs(interaction.eventData.data.global.y - smile.y) < 2 ) {
                     
                     smile.velocity.y = 0;
-                    smile.y = interaction.mouse.global.y;
+                    smile.y = interaction.eventData.data.global.y;
                     
-                } else if( Math.abs(interaction.mouse.global.y - smile.y) <= Math.abs( smile.velocity.y ) ) {
+                } else if( Math.abs(interaction.eventData.data.global.y - smile.y) <= Math.abs( smile.velocity.y ) ) {
                     
-                     smile.velocity.y = Math.sign( interaction.mouse.global.y - smile.y );
+                     smile.velocity.y = Math.sign( interaction.eventData.data.global.y - smile.y );
                     
                 } else {
                 
-                    smile.velocity.y += Math.sign( interaction.mouse.global.y - smile.y );
+                    smile.velocity.y += Math.sign( interaction.eventData.data.global.y - smile.y );
                     
                 }
                 
