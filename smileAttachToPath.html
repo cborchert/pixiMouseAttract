@@ -33,6 +33,7 @@
         smileTexture, 
         smiles = [],
         velocityFollow = 1,
+        velocityFollowOrigin = 3,
         gravity = 0.5,
         jsonData,
         offsetX = 1500,
@@ -40,7 +41,7 @@
         firstFrame,
         lastFrame,
         onFrame, 
-        frameSpeed = 1,
+        frameSpeed = 0.2,
         frameReverseLoop = true;
     
     renderer.autoResize = true;
@@ -91,9 +92,9 @@
         smiles.forEach( function( smile, i ) {
             
             //set smile origin
-            
-            console.log( smile.originx, smile.originy );
-            var thePosition = getPosition( onFrame );
+            //In case we're not using integer speeds
+            var roundedOnFrame = Math.floor( onFrame );
+            var thePosition = getPosition( roundedOnFrame );
             if( typeof thePosition !== "undefined" ) {
                 
                 smile.originx = parseFloat( thePosition.x ) - offsetX;
@@ -193,9 +194,9 @@
 //                smile.velocity.x += getCoordintateChange( smile.x, smile.originx );
 //                smile.velocity.y += getCoordintateChange( smile.y, smile.originy );
                 
-                if( Math.abs(smile.originx - smile.x) < 2 ) {
+                if( Math.abs(smile.originx - smile.x) < 2*velocityFollowOrigin ) {
                     
-                    if( Math.abs(smile.originy - smile.y) < 2 ) {
+                    if( Math.abs(smile.originy - smile.y) < 2*velocityFollowOrigin ) {
                         
                         smile.velocity.x = 0;
                         smile.x = smile.originx;
@@ -204,17 +205,17 @@
                     
                 } else if( Math.abs(smile.originx - smile.x) <= Math.abs( smile.velocity.x ) ) {
                     
-                     smile.velocity.x = Math.sign( smile.originx - smile.x );
+                     smile.velocity.x = Math.sign( smile.originx - smile.x ) * velocityFollowOrigin;
                     
                 } else {
                 
-                    smile.velocity.x += Math.sign( smile.originx - smile.x );
+                    smile.velocity.x += Math.sign( smile.originx - smile.x ) * velocityFollowOrigin;
                     
                 }
                 
-                if( Math.abs(smile.originy - smile.y) < 2 ) {
+                if( Math.abs(smile.originy - smile.y) < 2*velocityFollowOrigin ) {
                     
-                    if( Math.abs(smile.originx - smile.x) < 2 ) {
+                    if( Math.abs(smile.originx - smile.x) < 2*velocityFollowOrigin ) {
                         
                         smile.velocity.y = 0;
                         smile.y = smile.originy;
@@ -223,11 +224,11 @@
                     
                 } else if( Math.abs(smile.originy - smile.y) <= Math.abs( smile.velocity.y ) ) {
                     
-                     smile.velocity.y = Math.sign( smile.originy - smile.y );
+                     smile.velocity.y = Math.sign( smile.originy - smile.y ) * velocityFollowOrigin;
                     
                 } else {
                 
-                    smile.velocity.y += Math.sign( smile.originy - smile.y );
+                    smile.velocity.y += Math.sign( smile.originy - smile.y ) * velocityFollowOrigin;
                     
                 }
                 
