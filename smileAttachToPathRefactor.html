@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+    
+    <style>
+
+        body {
+            
+            margin: 0;
+            padding: 0;
+            
+        }
+        
+        canvas {
+
+            width: auto !important;
+            height: 100vh !important;
+
+        }
+
+    </style>
+    
+</head>
+<body>
+<script src="underscore.min.js"></script>
+<script src="pixi.min.js"></script>
+<script>
+
+    var renderer = PIXI.autoDetectRenderer(256, 256),
+        stage = new PIXI.Container(),
+        interaction = new PIXI.interaction.InteractionManager( renderer ),
+        graphics = new PIXI.Graphics(),
+        smileTexture, 
+        smiles = [],
+        velocityFollow = 1,
+        velocityFollowOrigin = 3,
+        gravity = 0.5,
+        friction = 0.05,
+        jsonData,
+        offsetX = 1500,
+        offsetY = 0,
+        firstFrame,
+        lastFrame,
+        onFrame, 
+        frameSpeed = 0.5,
+        frameReverseLoop = true;
+    
+    renderer.autoResize = true;
+    renderer.backgroundColor = 0xEEEEEE;
+    renderer.resize(512, 512);
+    
+    document.body.appendChild( renderer.view );
+    renderer.render(stage);
+    
+    PIXI.loader.add("smile.png").load( setup );
+   
+    function setup() {
+        
+        smileTexture = PIXI.loader.resources["smile.png"].texture;
+        
+        //smile creation and animation loop called from paththis function
+        getJsonData("path.json");
+        
+        //create Smiles
+        //smiles.push( createSmile(Math.random() * renderer.width, Math.random() * renderer.height) );
+        
+        //animationLoop();
+        
+    }
+    
+    function createSmile( x, y ) {
+		
+        var smile = new PIXI.Sprite(smileTexture);
+
+        smile.anchor.set( 0.5, 0.5 );
+        
+        smile = actorMakeInteractive( smile );
+        
+        //setActorInitials( sprite, x, y, vx, vy, gravityOn, attractToOrigin, originBreakDistance, attractToClick );
+		smile = setActorInitials( smile, x, y, 0, 0, true, true, 100, true );
+		
+		// add it to the stage
+		stage.addChild( smile );
+        
+        return smile;
+        
+	}
+    
+    function animationLoop() {
+        
+//        console.log( smiles );
+        
+        smiles.forEach( function( smile, i ) {
+            
+            //set smile origin
+            //In case we're not using integer speeds
+            var roundedOnFrame = Math.floor( onFrame );
+            var thePosition = getPositionFromFrame( roundedOnFrame );
+            
+            if( typeof thePosition !== "undefined" ) {
+                
+                smile.originx = parseFloat( thePosition.x ) - offsetX;
+                smile.originy = parseFloat( thePosition.y ) - offsetY;
+                
+            }
+            
+            //Add to velocity toward the ground
+            if( smile.gravity && !smile.attractedToOrigin && !smile.attractedToMouse){
+                
+                smile.velocity.y += gravity;
+            
+            }
+            
+            smile = actorDetectWallCollisions( smile );
+            
+            
+            if( smile.attractedToMouse ) {
+                
+                smile = actorSetAttraction( smile, interaction.eventData.data.global, 2, 3 );
+                
+            } 
+            
+            if( smile.attractedToOrigin ) {
+                
+                smile = actorSetAttraction( smile, {x: smile.originx, y: smile.originy}, 2, 3 );
+                
+            }
+            
+            smile.y += smile.velocity.y;
+            smile.x += smile.velocity.x;
+            
+            
+        });
+        
+        onFrame += frameSpeed;
+        
+        if( onFrame > lastFrame || onFrame < firstFrame ) {
+            
+            if( frameReverseLoop ) {
+                
+                frameSpeed *= -1;
+                onFrame += 2*frameSpeed;
+                
+            } else {
+                
+                onFrame = ( onFrame > lastFrame )?firstFrame:lastFrame;
+                
+            }
+            
+        }
+        
+        requestAnimationFrame( animationLoop );
+        renderer.render(stage);
+        
+    }
+    
+    /**
+     * Makes sprite interactive, and sets up sprite mouse and touch events
+     * @param {PIXI.Sprite} actor 
+     * @return {PIXI.Sprite} actor
+     */
+    function actorMakeInteractive( actor ) {
+        
+        
+        // Interactive allows the sprite/actor to respond to mouse and touch events	
+        // Button mode will make the hand cursor appear when you rollover the sprite with your mouse
+		actor.interactive = true;
+		actor.buttonMode = true;
+        
+        // Set behavior for when actor is touched/clicked
+		actor.mousedown = actor.touchstart = actorOnTouch;
+        
+        // Set the behavior for when the touch/mouse is released from the mouse
+		actor.mouseup = actor.mouseupoutside = actor.touchend = actor.touchendoutside = actorOffTouch;
+        
+        return actor;
+        
+    }
+    
+    /**
+     * If attracted to clicks, the actor will become attracted to the mouse. Other attractions are annulled
+     * @param data 
+     */
+    function actorOnTouch( data ) {
+	
+        if( this.attractToClick ) {
+
+            this.alpha = 0.9;
+            this.dragging = true;
+            this.attractedToMouse = true;
+            this.attractedToOrigin = false;
+//            this.gravity = false;
+
+        }
+
+    }
+    
+    /**
+     * Resets actor attractions.
+     * @param data 
+     */
+    function actorOffTouch(data) {
+            
+        this.alpha = 1
+        this.dragging = false;
+        this.attractedToMouse = false;
+        this.attractedToOrigin = actorOriginAttracted( this );
+//        this.gravity = true;
+        //Once origin attraction is broken, it cannot be replaced
+        this.attractToOrigin = ( this.attractToOrigin && !this.attractedToOrigin )?false:this.attractToOrigin
+
+
+    };
+    
+    /**
+     * Determines whether the actor should be attracted to origin based on distance
+     * @param {PIXI.Sprite} actor
+     * @return {Boolean} attracted
+     */
+    function actorOriginAttracted( actor ) {
+        
+        if( !actor.attractToOrigin ) {
+            
+            return false;
+            
+        } else if( actor.originBreakDistance == false ) {
+            
+            return true;
+            
+        } else {
+            
+            var distanceFromOrigin = getDistance(actor.x, actor.y, actor.originx, actor.originy);
+            return ( distanceFromOrigin < actor.originBreakDistance );
+            
+        }
+        
+    }
+    
+    function actorSetAttraction( actor, pointOfAttraction, threshold, powerOfAttraction ){
+        
+        //Set defaults
+        powerOfAttraction = ( typeof powerOfAttraction == "undefined" )?1:powerOfAttraction;
+        threshold = ( typeof threshold == "undefined" )?1:4*powerOfAttraction;
+        
+        var multX = 1, multY = 1;
+        
+        //If the actor is within the threshold, it is stopped, and it's position is set to coincide with the point of attraction
+        if( Math.abs( pointOfAttraction.x - actor.x ) <= threshold ) {
+                    
+            actor.velocity.x = 0;
+            actor.x = pointOfAttraction.x;
+            multX = 0;
+            
+        } 
+        
+        if( Math.abs( pointOfAttraction.y - actor.y ) <= threshold ) {
+                    
+            actor.velocity.y = 0;
+            actor.y = pointOfAttraction.y;
+            multY = 0;
+            
+        } 
+        
+        var attraction = calculateAttraction( actor, pointOfAttraction, powerOfAttraction )
+        actor.velocity.x += attraction.x * multX;
+        actor.velocity.y += attraction.y * multY;
+          
+        return actor;
+        
+    }
+    
+    function actorDetectWallCollisions( actor ){
+        
+        //Ball touching floor
+        if( ( actor.y + actor.height/2 ) >= renderer.height ){
+
+            //Ball moving slow enough, stop it
+            if( actor.velocity.y <= 5*gravity ) {
+
+                actor.velocity.y = 0;
+                actor.y = renderer.height - actor.height/2;
+
+            } else {
+
+                //Bounce
+                actor.y = renderer.height - actor.height/2 - 1;
+                actor.velocity.y = actor.velocity.y * -0.5;
+
+            }
+
+            //Affect of friction
+            actor.velocity.x -= ( actor.velocity.x * friction);
+            
+            //Ball moving slow enough, stop it
+            if( Math.abs(actor.velocity.x) <= 10 * friction ) {
+
+                actor.velocity.x = 0;
+
+            }
+
+        }
+
+        if( ( actor.x + actor.width/2 ) >= renderer.width ){
+
+                //Bounce
+                actor.x = renderer.width - actor.width/2 - 1;
+                actor.velocity.x = actor.velocity.x * -10*friction;
+
+        }
+
+        if( ( actor.x - actor.width/2 ) <= 0 ){
+
+                //Bounce
+                actor.x = actor.width/2 + 1;
+                actor.velocity.x = actor.velocity.x * -10*friction;
+
+        }
+        
+        return actor;
+        
+    }
+    
+    function calculateAttraction( actor, pointOfAttraction, powerOfAttraction ) {
+     
+        
+        var distX = pointOfAttraction.x - actor.x,
+            distY = pointOfAttraction.y - actor.y,
+            sumXY = Math.abs(distX) + Math.abs(distY),
+            distA = getDistance(actor.x, actor.y, pointOfAttraction.x, pointOfAttraction.y),
+            attraction;
+        
+         attraction = {  x: Math.abs( distX ) <= actor.velocity.x ? -actor.velocity.x + distX : Math.sign( distX ) * powerOfAttraction,
+                         y: Math.abs( distY ) <= actor.velocity.y ? -actor.velocity.y + distY :Math.sign( distY ) * powerOfAttraction };
+            
+        //All of these end up with something similar to an orbit. Cool, but not right for this project
+//            var vectorA = powerOfAttraction/Math.pow( getDistance(actor.x, actor.y, pointOfAttraction.x, pointOfAttraction.y), 2);
+              
+//            attraction = { x: (sumXY == 0) ? 0 : vectorA * distX/sumXY, 
+//                           y: (sumXY == 0) ? 0 : vectorA * distY/sumXY };
+            
+//            attraction = {  x: Math.sign( distX ) * Math.sqrt( Math.abs( distX ) )/10,
+//                            y: Math.sign( distY ) * Math.sqrt( Math.abs( distY ) )/10 };
+            
+//            attraction = {  x: (sumXY == 0) ? 0 : Math.sign( distX ) * Math.abs( distX/sumXY )/10,
+//                            y: (sumXY == 0) ? 0 : Math.sign( distY ) * Math.abs( distY/sumXY )/10 };
+            
+           
+        //console.log( attraction );
+        return attraction;
+        
+    }
+    
+    function setActorInitials( sprite, x, y, vx, vy, gravityOn, attractToOrigin, originBreakDistance, attractToClick ){
+    
+        // move the sprite to its designated position and set up original distance
+		sprite.x = x;
+		sprite.y = y;
+        sprite.originx = x;
+        sprite.originy = y;
+        sprite.velocity = {x: vx, y: vy};
+        sprite.gravity = gravityOn;
+        sprite.attractToOrigin = attractToOrigin;
+        sprite.attractedToOrigin = attractToOrigin;
+        sprite.attractToClick = attractToClick;
+        sprite.originBreakDistance = originBreakDistance;
+        
+        return sprite;
+        
+    }
+    
+    function getJsonData( fileName ) {
+        
+        var oReq = new XMLHttpRequest();
+        oReq.onload = parseJsonData;
+        oReq.open("get", fileName, true);
+        oReq.send();
+        
+    }
+    
+    function parseJsonData(e) {
+
+        //Will be returned as an array of objects
+        jsonData = JSON.parse( this.responseText );
+        setFrameLimits();
+        var initPos = getPositionFromFrame( 0 );
+        smiles.push( createSmile( parseFloat(initPos.x) - offsetX, parseFloat(initPos.y) - offsetY ) );
+        //Set canvas size
+        setCanvasSize( 500, 500 );
+        //plot the data
+        plotData();
+
+        animationLoop();
+        
+    }
+    
+    function plotData( ) {
+        
+        var pointSet = false;
+        var thePoint = {f: 0, x: 0, y: 0}
+        
+        graphics.lineStyle(1, 0x000000);
+        jsonData.forEach( function(e, i) {
+           
+            thePoint = getPositionFromFrame( i );
+            
+            if( typeof thePoint == "undefined" ) {
+                
+                // do nothing
+                
+            } else {
+            
+                var x = parseFloat(thePoint.x) - offsetX,
+                    y = parseFloat(thePoint.y) - offsetY;
+
+                if( !pointSet ) { 
+
+                    graphics.moveTo( x, y ); 
+                    pointSet = true;
+
+                } else {
+
+                    graphics.lineTo( x, y );
+
+                }
+                
+            }
+            
+        });
+        
+        stage.addChild(graphics);
+        renderer.render(stage);
+        
+        
+    }
+    
+    function setFrameLimits() {
+     
+        var minFrame=0,
+            maxFrame=0;
+        
+        jsonData.forEach( function(e, i) {
+           
+            if( e.f > maxFrame ) { maxFrame = e.f }
+            if( e.f < minFrame ) { minFrame = e.f }
+            
+        });
+        
+        onFrame = firstFrame = minFrame;
+        lastFrame = maxFrame;
+        
+    }
+    
+    function setCanvasSize( atLeastX, atLeastY ) {
+     
+        atLeastX = typeof atLeastX == "undefined" ? 100 : atLeastX;
+        atLeastY = typeof atLeastY == "undefined" ? 100 : atLeastY;
+        
+        var maxX=atLeastX, 
+            maxY=atLeastY,
+            minX=0,
+            minY=0;
+        
+        jsonData.forEach( function(e, i) {
+           
+            if( e.x - offsetX > maxX ) { maxX = e.x - offsetX; }
+            if( e.y - offsetY > maxY ) { maxY = e.y - offsetY; }
+            
+        });
+        
+        renderer.resize(maxX, maxY);
+        
+    }
+    
+    function getPositionFromFrame( frame ) {
+     
+        return _.findWhere( jsonData, {f: frame} );
+        
+    }
+    
+    //Auxiliary functions
+    
+    function getDistance( ax, ay, bx, by ){
+        
+        var a = (bx - ax),
+            b = (by - ay);
+        
+        return Math.sqrt( a*a + b*b );
+        
+    }
+    
+    //Marked for removal/obselete
+    function getCoordintateChange( orig, attract ) {
+        
+        //Attracted by the square root of distance between original point and point of attraction
+        var diff = attract - orig,
+            change = Math.sqrt( Math.abs( diff ) ) * Math.sign( diff ) * velocityFollow;
+        
+        return change;
+        
+    }
+    
+    
+    
+</script>
+</body>
