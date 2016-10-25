@@ -1,6 +1,19 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<title></title>
+<head>
+    
+    <style>
+
+        canvas {
+
+            width: auto !important;
+            height: 100% !important;
+
+        }
+
+    </style>
+    
+</head>
 <body>
 <script src="pixi.min.js"></script>
 <script>
@@ -15,7 +28,7 @@
     
     renderer.autoResize = true;
     renderer.backgroundColor = 0xEEEEEE;
-    renderer.resize(window.innerWidth, window.innerHeight);
+    renderer.resize(512, 512);
     
     document.body.appendChild( renderer.view );
     renderer.render(stage);
@@ -42,11 +55,11 @@
         var smile = new PIXI.Sprite(smileTexture);
 
         smile.anchor.set( 0.5, 0.5 );
-        smile.scale.x = 2;
-        smile.scale.y = 2;
         
         smile = makeSpriteInteractive( smile );
-		smile = setSpriteInitials( smile, x, y, 0, 0, true, false, true );
+        //setSpriteInitials( sprite, x, y, vx, vy, gravityOn, attractToOrigin, originBreakDistance, attractToClick );
+        
+		smile = setSpriteInitials( smile, x, y, 0, 0, true, ( Math.round(Math.random()) ), 100, true );
 		
 		// add it to the stage
 		stage.addChild( smile );
@@ -231,10 +244,13 @@
         // set the events for when the mouse is released or a touch is released
 		sprite.mouseup = sprite.mouseupoutside = sprite.touchend = sprite.touchendoutside = function(data) {
             
+            console.log(sprite.originBreakDistance, getDistance(sprite.x, sprite.y, sprite.originx, sprite.originy) );
+            var unbroken = ( sprite.originBreakDistance == false || sprite.originBreakDistance > getDistance(sprite.x, sprite.y, sprite.originx, sprite.originy) );
+            
 			sprite.alpha = 1
 			sprite.dragging = false;
             sprite.attractedToMouse = false;
-            sprite.attractedToOrigin = sprite.attractToOrigin;
+            sprite.attractedToOrigin = sprite.attractToOrigin?unbroken:false;
             sprite.gravity = true;
             
             
@@ -244,7 +260,7 @@
         
     }
     
-    function setSpriteInitials( sprite, x, y, vx, vy, gravityOn, attractToOrigin, attractToClick ){
+    function setSpriteInitials( sprite, x, y, vx, vy, gravityOn, attractToOrigin, originBreakDistance, attractToClick ){
     
         // move the sprite to its designated position and set up original distance
 		sprite.x = x;
@@ -256,6 +272,7 @@
         sprite.attractToOrigin = attractToOrigin;
         sprite.attractedToOrigin = attractToOrigin;
         sprite.attractToClick = attractToClick;
+        sprite.originBreakDistance = originBreakDistance;
         
         return sprite;
         
@@ -270,5 +287,15 @@
         return change;
         
     }
+    
+    function getDistance( ax, ay, bx, by ){
+        
+        var a = (bx - ax),
+            b = (by - ay);
+        
+        return Math.sqrt( a*a + b*b );
+        
+    }
+    
 </script>
 </body>
