@@ -4,10 +4,17 @@
     
     <style>
 
+        body {
+            
+            margin: 0;
+            padding: 0;
+            
+        }
+        
         canvas {
 
             width: auto !important;
-            height: 100% !important;
+            height: 100vh !important;
 
         }
 
@@ -73,6 +80,7 @@
         requestAnimationFrame( animationLoop );
         
         smiles.forEach( function( smile, i ) {
+            
             
             //Add to velocity toward the ground
             if( smile.gravity && !smile.attractedToOrigin && !smile.attractedToMouse){
