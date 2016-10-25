@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+    
+    <head>
+    
+        <style>
+            
+            canvas {
+            
+                width: 100%;
+                height: auto;
+                
+            }
+            
+        </style>
+    </head>
+<body>
+      
+<script src="pixi.min.js"></script> 
+<script type="text/javascript">
+
+    var renderer = PIXI.autoDetectRenderer(256, 256),
+        stage = new PIXI.Container(),
+        interaction = new PIXI.interaction.InteractionManager( renderer ),
+        graphics = new PIXI.Graphics(),
+        smileTexture, 
+        smiles = [],
+        velocityFollow = 1,
+        jsonData;
+    
+    renderer.autoResize = true;
+    renderer.backgroundColor = 0xEEEEEE;
+    renderer.resize(512, 512);
+    
+    document.body.appendChild( renderer.view );
+    renderer.render(stage);
+    
+    getJsonData("path.json");
+    
+    
+    function getJsonData( fileName ) {
+        
+        var oReq = new XMLHttpRequest();
+        oReq.onload = parseJsonData;
+        oReq.open("get", fileName, true);
+        oReq.send();
+        
+    }
+    
+    function parseJsonData(e) {
+
+        //Will be returned as an array of objects
+        jsonData = JSON.parse( this.responseText );
+        //Set canvas size
+        setCanvasSize( 500, 500 );
+        //plot the data
+        plotData();
+
+        
+    }
+    
+    function plotData( ) {
+        
+        var pointSet = false;
+        
+        graphics.lineStyle(1, 0x000000);
+        jsonData.forEach( function(e, i) {
+           
+            var x = parseFloat(e.x),
+                y = parseFloat(e.y);
+            
+            if( !pointSet ) { 
+                
+                graphics.moveTo( e.x, e.y ); 
+                pointSet = true;
+            
+            } else {
+            
+                graphics.lineTo( x, y );
+                
+            }
+            
+        });
+        
+        stage.addChild(graphics);
+        renderer.render(stage);
+        
+        
+    }
+    
+    function setCanvasSize( minX, minY ) {
+     
+        minX = typeof minX == "undefined" ? 100 : minX;
+        minY = typeof minY == "undefined" ? 100 : minY;
+        
+        var maxX=minX, 
+            maxY=minY;
+        
+        jsonData.forEach( function(e, i) {
+           
+            if( e.x > maxX ) { maxX = e.x; }
+            if( e.y > maxY ) { maxY = e.y; }
+            
+        });
+        
+        renderer.resize(maxX, maxY);
+        
+    }
+    
+</script>
+    
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<body>
+    
+    <canvas id="pathPlot" style="border: 1px solid #ddd;"></canvas>
+    
+<script type="text/javascript">
+
+    //Prepare the canvas
+    var canvas = document.getElementById("pathPlot"),
+        ctx = canvas.getContext("2d");
+    
+    var jsonData;
+    getJsonData("path.json");
+    
+    function getJsonData( fileName ) {
+        
+        var oReq = new XMLHttpRequest();
+        oReq.onload = parseJsonData;
+        oReq.open("get", fileName, true);
+        oReq.send();
+        
+    }
+    
+    function parseJsonData(e) {
+
+        //Will be returned as an array of objects
+        jsonData = JSON.parse( this.responseText );
+        setCanvasSize( 500, 500 );
+        plotData();
+
+    }
+    
+    function plotData( ) {
+        
+        var pointSet = false;
+        
+        jsonData.forEach( function(e, i) {
+           
+            if( pointSet ) {
+                
+                ctx.lineTo( e.x, e.y );
+                ctx.stroke();
+                
+            }
+            
+            ctx.moveTo( e.x, e.y );
+            pointSet = true;
+            
+        });
+        
+        
+    }
+    
+    function setCanvasSize( minX, minY ) {
+     
+        minX = typeof minX == "undefined" ? 100 : minX;
+        minY = typeof minY == "undefined" ? 100 : minY;
+        
+        var maxX=minX, 
+            maxY=minY;
+        
+        jsonData.forEach( function(e, i) {
+           
+            if( e.x > maxX ) { maxX = e.x; }
+            if( e.y > maxY ) { maxY = e.y; }
+            
+        });
+        
+        canvas.width = maxX;
+        canvas.height = maxY;
+        
+    }
+    
+</script>
+    
+</body>
+</html>

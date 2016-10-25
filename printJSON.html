@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<body>
+    
+<script type="text/javascript">
+
+    var jsonData;
+    
+    var oReq = new XMLHttpRequest();
+    oReq.onload = parseJsonData;
+    oReq.open("get", "path.json", true);
+    oReq.send();
+    
+    function parseJsonData(e) {
+     
+        //Will be returned as an array of objects
+        jsonData = JSON.parse( this.responseText );
+        
+        jsonData.forEach( function(e, i ) {
+            
+            console.log( e.f, e.x, e.y );
+            
+        });
+        
+    }
+    
+</script>
+    
+</body>
+</html>
