@@ -31,14 +31,17 @@
         stage = new PIXI.Container(),
         interaction = new PIXI.interaction.InteractionManager( renderer ),
         graphics = new PIXI.Graphics(),
-        smileTexture, 
-        smiles = [],
+        actorTexture, 
+        actorTextures = [], 
+        actorTexturesReady = false,
+        actors = [],
         tracks = [],
         velocityFollow = 1,
         velocityFollowOrigin = 3,
         gravity = 0.5,
         friction = 0.05,
         jsonData,
+        jsonDataReady = false,
         offsetX = 0,
         offsetY = 0,
         firstFrame,
@@ -55,37 +58,89 @@
     document.body.appendChild( renderer.view );
     renderer.render(stage);
     
-    PIXI.loader.add("smile.png").load( setup );
-   
-    function setup() {
-        
-        smileTexture = PIXI.loader.resources["smile.png"].texture;
-        
-        //smile creation and animation loop called from paththis function
-        getJsonData("tracks.JSON");
-        
-        //create Smiles
-        //smiles.push( createSmile(Math.random() * renderer.width, Math.random() * renderer.height) );
-        
-        //animationLoop();
+    getEmojis( "emojis.json" );
+    getJsonData("tracks.JSON");
+    
+    waitLoad();
+    
+    
+    function waitLoad() {
+    
+        if( actorTexturesReady && jsonDataReady ){
+            
+            actorTexture = actorTextures["banana"];
+            animationLoop();
+            
+        } else {
+            
+            setTimeout( waitLoad, 100 );
+            
+        }
         
     }
     
-    function createSmile( x, y ) {
-		
-        var smile = new PIXI.Sprite(smileTexture);
-
-        smile.anchor.set( 0.5, 0.5 );
+    function getEmojis( fileName ) {
         
-        smile = actorMakeInteractive( smile );
+        var oReq = new XMLHttpRequest();
+        oReq.onload = function (e) {
+            
+            var emojiData = JSON.parse( this.responseText );
+            _.each( emojiData, function( emoji, i, l ){
+             
+                PIXI.loader.add(emoji.url).load( function(){
+                 
+                    actorTextures[i] = PIXI.loader.resources[emoji.url].texture;
+                 
+                    //check to see if we've finished loading 
+                    if( Object.keys(actorTextures).length >= Object.keys(emojiData).length ) {
+                        
+                        actorTexturesReady = true;
+                        
+                    }
+                    
+                });
+                
+            });
+        
+        };
+        
+        oReq.open("get", fileName, true);
+        oReq.send();
+        
+    }
+    
+    function createActor( x, y, actorTextureKeys ) {
+		
+        console.log('in create actor');
+        
+        if( typeof actorTextureKeys == "undefined" || actorTextureKeys.length < 1 ) {
+         
+            actorTextureKeys = [];
+            //populate with each actor texture name
+            console.log('actorTextures', actorTextures);
+            actorTextureKeys = _.keys(actorTextures);
+            
+        } 
+        
+        var textureNumber = Math.floor(Math.random() * (actorTextureKeys.length - 1));
+        console.log( actorTextureKeys, textureNumber );
+        
+        var textureChoice = actorTextureKeys[textureNumber];
+        console.log( textureChoice );
+        
+        var actor = new PIXI.Sprite(actorTextures[textureChoice]);
+
+        actor.anchor.set( 0.5, 0.5 );
+        
+        actor = actorMakeInteractive( actor );
         
         //setActorInitials( sprite, x, y, vx, vy, gravityOn, attractToOrigin, originBreakDistance, attractToClick );
-		smile = setActorInitials( smile, x, y, 0, 0, true, true, 100, true );
+		actor = setActorInitials( actor, x, y, 0, 0, true, true, 100, true );
 		
 		// add it to the stage
-		stage.addChild( smile );
+		stage.addChild( actor );
         
-        return smile;
+        return actor;
         
 	}
     
@@ -93,6 +148,7 @@
         
         //In case we're not using integer speeds
         var roundedOnFrame = Math.floor( onFrame );
+//        console.log(roundedOnFrame);
         getTracksFromFrame( roundedOnFrame );
         
         tracks.forEach( function( track, t ) {
@@ -139,34 +195,34 @@
             
         });
         
-        smiles.forEach( function( smile, i ) {
+        actors.forEach( function( actor, i ) {
             
             //Add to velocity toward the ground
-            if( smile.gravity && !smile.attractedToOrigin && !smile.attractedToMouse){
+            if( actor.gravity && !actor.attractedToOrigin && !actor.attractedToMouse){
                 
-                smile.velocity.y += gravity;
+                actor.velocity.y += gravity;
             
             }
             
-            smile = actorDetectWallCollisions( smile );
+            actor = actorDetectWallCollisions( actor );
             
             
-            if( smile.attractedToMouse ) {
+            if( actor.attractedToMouse ) {
                 
-                smile = actorSetAttraction( smile, interaction.eventData.data.global, 2, 3, false );
+                actor = actorSetAttraction( actor, interaction.eventData.data.global, 2, 3, false );
                 
-            } else if(smile.attachedToTrack !== false && smile.attachedToTrack !== null && smile.attachedToTrack > -1) {
+            } else if(actor.attachedToTrack !== false && actor.attachedToTrack !== null && actor.attachedToTrack > -1) {
               
-                smile = actorSetAttraction( smile, {x: smile.originx, y: smile.originy}, 2, 3, true );
+                actor = actorSetAttraction( actor, {x: actor.originx, y: actor.originy}, 2, 3, true );
                 
-            } else if( smile.attractedToOrigin ) {
+            } else if( actor.attractedToOrigin ) {
                 
-                smile = actorSetAttraction( smile, {x: smile.originx, y: smile.originy}, 2, 3, false );
+                actor = actorSetAttraction( actor, {x: actor.originx, y: actor.originy}, 2, 3, false );
                 
             }
             
-            smile.y += smile.velocity.y;
-            smile.x += smile.velocity.x;
+            actor.y += actor.velocity.y;
+            actor.x += actor.velocity.x;
             
             
         });
@@ -197,11 +253,11 @@
         
         var theTrack = tracks[t]
         //add one
-        var newActor = createSmile( parseFloat(theTrack.x) - offsetX, parseFloat(theTrack.y) - offsetY );
+        var newActor = createActor( parseFloat(theTrack.x) - offsetX, parseFloat(theTrack.y) - offsetY );
         newActor.attachedToTrack = t;
 
         //Make sure to add the actor to the actor array and the track
-        smiles.push( newActor );
+        actors.push( newActor );
         theTrack.actor = newActor;
         
     }
@@ -460,21 +516,14 @@
         setFrameLimits();
         initTracksFromJSON();
         var numActors = tracks.length; 
-        
-//        for( var i = 0; i < numActors; i++ ) {
-//            
-////            console.log('in parsJSONData ');
-//            var initPos = getPositionFromFrame( 1, i );
-//            smiles.push( createSmile( parseFloat(initPos.x) - offsetX, parseFloat(initPos.y) - offsetY ) );
-//            
-//        }
 
         //Set canvas size
         setCanvasSize( 1000, 1000 );
+        
         //plot the data
         plotData( numActors );
-
-        animationLoop();
+        
+        jsonDataReady = true;
         
     }
     
@@ -503,6 +552,8 @@
     }
     
     function getTracksFromFrame( f ) {
+        
+//        console.log( f );
     
         var tracksData = jsonData[ f ];
         
@@ -527,7 +578,7 @@
             graphics.lineStyle(1, 0x000000);
             jsonData.forEach( function(e, i) {
                 
-                console.log('in plotdata');
+//                console.log('in plotdata');
 
                 thePoint = getPositionFromFrame( i, a );
 
@@ -540,7 +591,7 @@
                     var x = parseFloat(thePoint.x) - offsetX,
                         y = parseFloat(thePoint.y) - offsetY;
 
-                    console.log(x, y);
+//                    console.log(x, y);
                     if( !pointSet ) { 
 
                         graphics.moveTo( x, y ); 
@@ -567,6 +618,7 @@
     
     function setFrameLimits() {
      
+//        console.log( 'in frame limits' );
         var minFrame=0,
             maxFrame=0;
         
@@ -578,7 +630,7 @@
 //        });
         
         onFrame = firstFrame = minFrame;
-        console.log( jsonData.length );
+//        console.log( jsonData.length );
         lastFrame = maxFrame = jsonData.length;
         
     }
@@ -606,7 +658,7 @@
     
     function getPositionFromFrame( frame, actorNum ) {
      
-        console.log( frame, actorNum );
+//        console.log( frame, actorNum );
         
         return jsonData[frame][actorNum];
         
