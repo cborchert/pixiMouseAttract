@@ -1,0 +1,92 @@
+{
+aubergine: {
+url: "aubergine.png"
+},
+banana: {
+url: "banana.png"
+},
+beer-mug: {
+url: "beer-mug.png"
+},
+burrito: {
+url: "burrito.png"
+},
+crown: {
+url: "crown.png"
+},
+disappointed-but-relieved-face: {
+url: "disappointed-but-relieved-face.png"
+},
+fire: {
+url: "fire.png"
+},
+four-leaf-clover: {
+url: "four-leaf-clover.png"
+},
+french-fries: {
+url: "french-fries.png"
+},
+full-moon-symbol: {
+url: "full-moon-symbol.png"
+},
+ghost: {
+url: "ghost.png"
+},
+hambuger: {
+url: "hambuger.png"
+},
+hot-dog: {
+url: "hot-dog.png"
+},
+lemon: {
+url: "lemon.png"
+},
+lion-face: {
+url: "lion-face.png"
+},
+lollipop: {
+url: "lollipop.png"
+},
+melon: {
+url: "melon.png"
+},
+money-bag: {
+url: "money-bag.png"
+},
+package: {
+url: "package.png"
+},
+peach: {
+url: "peach.png"
+},
+pile-of-poo: {
+url: "pile-of-poo.png"
+},
+pill: {
+url: "pill.png"
+},
+police-officer: {
+url: "police-officer.png"
+},
+rainbow-flag: {
+url: "rainbow-flag.png"
+},
+see-no-evil-monkey: {
+url: "see-no-evil-monkey.png"
+},
+shortcake: {
+url: "shortcake.png"
+},
+smiley: {
+url: "smiley.png"
+},
+sun-with-face: {
+url: "sun-with-face.png"
+},
+sushi: {
+url: "sushi.png"
+},
+taco: {
+url: "taco.png"
+}
+}

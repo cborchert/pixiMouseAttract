@@ -26,24 +26,27 @@
 <script src="pixi.min.js"></script>
 <script>
 
+    //Setup 
     var renderer = PIXI.autoDetectRenderer(256, 256),
         stage = new PIXI.Container(),
         interaction = new PIXI.interaction.InteractionManager( renderer ),
         graphics = new PIXI.Graphics(),
         smileTexture, 
         smiles = [],
+        tracks = [],
         velocityFollow = 1,
         velocityFollowOrigin = 3,
         gravity = 0.5,
         friction = 0.05,
         jsonData,
-        offsetX = 1500,
+        offsetX = 0,
         offsetY = 0,
         firstFrame,
         lastFrame,
         onFrame, 
-        frameSpeed = 0.1,
-        frameReverseLoop = true;
+        frameSpeed = 0.4,
+        frameReverseLoop = true,
+        walkNumber = 1;
     
     renderer.autoResize = true;
     renderer.backgroundColor = 0xEEEEEE;
@@ -59,7 +62,7 @@
         smileTexture = PIXI.loader.resources["smile.png"].texture;
         
         //smile creation and animation loop called from paththis function
-        getJsonData("path.json");
+        getJsonData("tracks.JSON");
         
         //create Smiles
         //smiles.push( createSmile(Math.random() * renderer.width, Math.random() * renderer.height) );
@@ -88,21 +91,55 @@
     
     function animationLoop() {
         
-//        console.log( smiles );
+        //In case we're not using integer speeds
+        var roundedOnFrame = Math.floor( onFrame );
+        getTracksFromFrame( roundedOnFrame );
         
-        smiles.forEach( function( smile, i ) {
-            
-            //set smile origin
-            //In case we're not using integer speeds
-            var roundedOnFrame = Math.floor( onFrame );
-            var thePosition = getPositionFromFrame( roundedOnFrame );
-            
-            if( typeof thePosition !== "undefined" ) {
+        tracks.forEach( function( track, t ) {
+           
+            //if the track is visible in this walk
+            if( typeof track.visible !== "undefined" && track.visible !== false && _.indexOf( track.visible, walkNumber ) > -1 ) {
                 
-                smile.originx = parseFloat( thePosition.x ) - offsetX;
-                smile.originy = parseFloat( thePosition.y ) - offsetY;
+                //if an actor is not attached
+                if( track.actor == false || track.actor == null) {
+                    
+                    //attach a new one
+                    newActorOnTrack( t );    
+                    
+                } else {
+                    
+                    //if so, update the actor
+                    if( typeof track.x !== "undefined" && typeof track.y !== "undefined" ) {
+                        
+                        track.actor.originx = parseFloat(track.x) - offsetX;
+                        track.actor.originy = parseFloat(track.y) - offsetY;
+                        
+                    }
+                    
+                }
+                
+            } else {
+                
+                //if the track is invisible in this walk
+                
+                //detach any attached actors
+                if( track.actor !== false && track.actor !== null) {
+                    
+                    track.actor.attachedToTrack = false;
+                    
+                    track.actor.attractedToOrigin = false;
+                    track.actor.attractToOrigin = false;
+                        
+                    track.actor = null;
+      
+                } 
+                
                 
             }
+            
+        });
+        
+        smiles.forEach( function( smile, i ) {
             
             //Add to velocity toward the ground
             if( smile.gravity && !smile.attractedToOrigin && !smile.attractedToMouse){
@@ -116,13 +153,15 @@
             
             if( smile.attractedToMouse ) {
                 
-                smile = actorSetAttraction( smile, interaction.eventData.data.global, 2, 3 );
+                smile = actorSetAttraction( smile, interaction.eventData.data.global, 2, 3, false );
                 
-            } 
-            
-            if( smile.attractedToOrigin ) {
+            } else if(smile.attachedToTrack !== false && smile.attachedToTrack !== null && smile.attachedToTrack > -1) {
+              
+                smile = actorSetAttraction( smile, {x: smile.originx, y: smile.originy}, 2, 3, true );
                 
-                smile = actorSetAttraction( smile, {x: smile.originx, y: smile.originy}, 2, 3 );
+            } else if( smile.attractedToOrigin ) {
+                
+                smile = actorSetAttraction( smile, {x: smile.originx, y: smile.originy}, 2, 3, false );
                 
             }
             
@@ -151,6 +190,19 @@
         
         requestAnimationFrame( animationLoop );
         renderer.render(stage);
+        
+    }
+    
+    function newActorOnTrack( t ) {
+        
+        var theTrack = tracks[t]
+        //add one
+        var newActor = createSmile( parseFloat(theTrack.x) - offsetX, parseFloat(theTrack.y) - offsetY );
+        newActor.attachedToTrack = t;
+
+        //Make sure to add the actor to the actor array and the track
+        smiles.push( newActor );
+        theTrack.actor = newActor;
         
     }
     
@@ -191,6 +243,20 @@
             this.attractedToOrigin = false;
 //            this.gravity = false;
 
+            // if is attracted to track
+            if( this.attachedToTrack !== false && this.attachedToTrack !== null && this.attachedToTrack > -1 ) {
+                
+                var trackNumber = this.attachedToTrack;
+                // unattract from origin
+                this.attractToOrigin = false;
+                // unattract from track
+                this.attachedToTrack = false;
+                // replace the actor on the track
+                newActorOnTrack( trackNumber );
+        
+            }
+            
+            
         }
 
     }
@@ -236,11 +302,12 @@
         
     }
     
-    function actorSetAttraction( actor, pointOfAttraction, threshold, powerOfAttraction ){
+    function actorSetAttraction( actor, pointOfAttraction, threshold, powerOfAttraction, linear ){
         
         //Set defaults
         powerOfAttraction = ( typeof powerOfAttraction == "undefined" )?1:powerOfAttraction;
         threshold = ( typeof threshold == "undefined" )?1:4*powerOfAttraction;
+        linear = ( typeof linear == "undefined" )?false:linear;
         
         var multX = 1, multY = 1;
         
@@ -261,9 +328,18 @@
             
         } 
         
-        var attraction = calculateAttraction( actor, pointOfAttraction, powerOfAttraction )
-        actor.velocity.x += attraction.x * multX;
-        actor.velocity.y += attraction.y * multY;
+        if( linear ) {
+            
+            actor.velocity.x = Math.sign( pointOfAttraction.x - actor.x ) * multX;
+            actor.velocity.y = Math.sign( pointOfAttraction.y - actor.y ) * multY;
+            
+        } else {
+        
+            var attraction = calculateAttraction( actor, pointOfAttraction, powerOfAttraction )
+            actor.velocity.x += attraction.x * multX;
+            actor.velocity.y += attraction.y * multY;
+            
+        }
           
         return actor;
         
@@ -382,50 +458,106 @@
         //Will be returned as an array of objects
         jsonData = JSON.parse( this.responseText );
         setFrameLimits();
-        var initPos = getPositionFromFrame( 0 );
-        smiles.push( createSmile( parseFloat(initPos.x) - offsetX, parseFloat(initPos.y) - offsetY ) );
+        initTracksFromJSON();
+        var numActors = tracks.length; 
+        
+//        for( var i = 0; i < numActors; i++ ) {
+//            
+////            console.log('in parsJSONData ');
+//            var initPos = getPositionFromFrame( 1, i );
+//            smiles.push( createSmile( parseFloat(initPos.x) - offsetX, parseFloat(initPos.y) - offsetY ) );
+//            
+//        }
+
         //Set canvas size
-        setCanvasSize( 500, 500 );
+        setCanvasSize( 1000, 1000 );
         //plot the data
-        plotData();
+        plotData( numActors );
 
         animationLoop();
         
     }
     
-    function plotData( ) {
+    function initTracksFromJSON( ){
         
-        var pointSet = false;
-        var thePoint = {f: 0, x: 0, y: 0}
+        //Get the last "Frame"
+        var tracksData = jsonData[ jsonData.length - 1 ];
         
-        graphics.lineStyle(1, 0x000000);
-        jsonData.forEach( function(e, i) {
-           
-            thePoint = getPositionFromFrame( i );
+        var numTracks = tracksData.length;
+        
+        for( var t = 0; t < numTracks; t++ ) {
             
-            if( typeof thePoint == "undefined" ) {
+            tracks.push({
                 
-                // do nothing
+                emojis: tracksData[t].emojis,       
+                actor: null,
+                x: null,
+                y: null,
+                scale: 0,
+                visible: false,
                 
-            } else {
+            });
             
-                var x = parseFloat(thePoint.x) - offsetX,
-                    y = parseFloat(thePoint.y) - offsetY;
+        }
+        
+    }
+    
+    function getTracksFromFrame( f ) {
+    
+        var tracksData = jsonData[ f ];
+        
+        for( var t = 0; t < tracks.length; t++ ) {
+            
+            tracks[t].x= tracksData[t].x;
+            tracks[t].y= tracksData[t].y;
+            tracks[t].scale= tracksData[t].scale;
+            tracks[t].visible= tracksData[t].visible;
+            
+        }
+        
+    }
+    
+    function plotData( numActors ) {
+        
+        for( var a = 0; a < numActors; a++ ){
+        
+            var pointSet = false;
+            var thePoint = {f: 0, x: 0, y: 0}
 
-                if( !pointSet ) { 
+            graphics.lineStyle(1, 0x000000);
+            jsonData.forEach( function(e, i) {
+                
+                console.log('in plotdata');
 
-                    graphics.moveTo( x, y ); 
-                    pointSet = true;
+                thePoint = getPositionFromFrame( i, a );
+
+                if( typeof thePoint == "undefined" ) {
+
+                    // do nothing
 
                 } else {
 
-                    graphics.lineTo( x, y );
+                    var x = parseFloat(thePoint.x) - offsetX,
+                        y = parseFloat(thePoint.y) - offsetY;
+
+                    console.log(x, y);
+                    if( !pointSet ) { 
+
+                        graphics.moveTo( x, y ); 
+                        pointSet = true;
+
+                    } else {
+
+                        graphics.lineTo( x, y );
+
+                    }
 
                 }
-                
-            }
+
+            });
             
-        });
+            
+        }
         
         stage.addChild(graphics);
         renderer.render(stage);
@@ -438,15 +570,16 @@
         var minFrame=0,
             maxFrame=0;
         
-        jsonData.forEach( function(e, i) {
-           
-            if( e.f > maxFrame ) { maxFrame = e.f }
-            if( e.f < minFrame ) { minFrame = e.f }
-            
-        });
+//        jsonData.forEach( function(e, i) {
+//           
+//            if( e.f > maxFrame ) { maxFrame = e.f }
+//            if( e.f < minFrame ) { minFrame = e.f }
+//            
+//        });
         
         onFrame = firstFrame = minFrame;
-        lastFrame = maxFrame;
+        console.log( jsonData.length );
+        lastFrame = maxFrame = jsonData.length;
         
     }
     
@@ -471,9 +604,11 @@
         
     }
     
-    function getPositionFromFrame( frame ) {
+    function getPositionFromFrame( frame, actorNum ) {
      
-        return _.findWhere( jsonData, {f: frame} );
+        console.log( frame, actorNum );
+        
+        return jsonData[frame][actorNum];
         
     }
     
