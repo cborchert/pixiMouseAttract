@@ -117,19 +117,16 @@
          
             actorTextureKeys = [];
             //populate with each actor texture name
-            console.log('actorTextures', actorTextures);
             actorTextureKeys = _.keys(actorTextures);
             
         } 
         
-        var textureNumber = Math.floor(Math.random() * (actorTextureKeys.length - 1));
+        var textureNumber = Math.floor(Math.random() * (actorTextureKeys.length)),
+            textureChoice = actorTextureKeys[textureNumber],
+            actor = new PIXI.Sprite(actorTextures[textureChoice]);
+
         console.log( actorTextureKeys, textureNumber );
         
-        var textureChoice = actorTextureKeys[textureNumber];
-        console.log( textureChoice );
-        
-        var actor = new PIXI.Sprite(actorTextures[textureChoice]);
-
         actor.anchor.set( 0.5, 0.5 );
         
         actor = actorMakeInteractive( actor );
@@ -253,7 +250,7 @@
         
         var theTrack = tracks[t]
         //add one
-        var newActor = createActor( parseFloat(theTrack.x) - offsetX, parseFloat(theTrack.y) - offsetY );
+        var newActor = createActor( parseFloat(theTrack.x) - offsetX, parseFloat(theTrack.y) - offsetY, theTrack.emojis );
         newActor.attachedToTrack = t;
 
         //Make sure to add the actor to the actor array and the track
