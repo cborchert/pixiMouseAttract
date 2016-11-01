@@ -291,15 +291,13 @@
     //Add a new actor to the track
     function newActorOnTrack( t ) {
         
-        var theTrack = tracks[t]
-        
         //create an actor and set it attached to the given track
-        var newActor = createActor( parseFloat(theTrack.x) - offsetX, parseFloat(theTrack.y) - offsetY, theTrack.emojis );
+        var newActor = createActor( parseFloat(tracks[t].x) - offsetX, parseFloat(tracks[t].y) - offsetY, tracks[t].emojis );
         newActor.attachedToTrack = t;
 
         //Make sure to add the actor to the actor array and the track
         actors.push( newActor );
-        theTrack.actor = newActor;
+        tracks[t].actor = newActor;
         
     }
     
@@ -643,17 +641,6 @@
         stage.addChild(graphics);
         renderer.render(stage);
         
-        
-    }
-    
-    //Set up the frame limits
-    function setFrameLimits() {
-     
-        var minFrame=0,
-            maxFrame=0;
-        
-        onFrame = firstFrame = minFrame;
-        lastFrame = maxFrame = jsonData.length -1;
         
     }
     
