@@ -60,7 +60,7 @@
     
     //Get external data
     getEmojis( "emojis.json" );
-    getJsonData("tracks.JSON");
+    getTracksData("tracks.JSON");
     
     //Wait for asynchronous data to load;
     //once it's ready, advance to the animation loop
@@ -517,46 +517,43 @@
         attraction = {  x: Math.abs( distX ) <= actor.velocity.x ? -actor.velocity.x + distX : Math.sign( distX ) * powerOfAttraction,
                          y: Math.abs( distY ) <= actor.velocity.y ? -actor.velocity.y + distY :Math.sign( distY ) * powerOfAttraction };
             
-   
-        //console.log( attraction );
+        
         return attraction;
         
     }
     
     //Get the track json data
-    function getJsonData( fileName ) {
+    function getTracksData( fileName ) {
         
         var oReq = new XMLHttpRequest();
-        oReq.onload = parseJsonData;
+        oReq.onload = function(e){
+            
+            //Will be returned as an array of objects
+            jsonData = JSON.parse( this.responseText );
+
+            //set frame limits
+            var minFrame=0,
+                maxFrame=0;
+
+            onFrame = firstFrame = minFrame;
+            lastFrame = maxFrame = jsonData.length -1;
+
+            //Initiate the tracks from the JSON
+            initTracksFromJSON();
+
+            //Set canvas size
+            setCanvasSize( 1000, 1000 );
+
+            //plot the tracks as lines
+            plotData();
+
+            //The json data is ready
+            jsonDataReady = true;
+            
+        };
+        
         oReq.open("get", fileName, true);
         oReq.send();
-        
-    }
-    
-    //Parse the track data
-    function parseJsonData(e) {
-
-        //Will be returned as an array of objects
-        jsonData = JSON.parse( this.responseText );
-        
-        //set frame limits
-        var minFrame=0,
-            maxFrame=0;
-        
-        onFrame = firstFrame = minFrame;
-        lastFrame = maxFrame = jsonData.length -1;
-        
-        //Initiate the tracks from the JSON
-        initTracksFromJSON();
-
-        //Set canvas size
-        setCanvasSize( 1000, 1000 );
-        
-        //plot the tracks as lines
-        plotData();
-        
-        //The json data is ready
-        jsonDataReady = true;
         
     }
     
