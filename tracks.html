@@ -26,7 +26,7 @@
 <script src="pixi.min.js"></script>
 <script>
 
-    //Setup 
+    //Setup global variables
     var renderer = PIXI.autoDetectRenderer(256, 256),
         stage = new PIXI.Container(),
         interaction = new PIXI.interaction.InteractionManager( renderer ),
@@ -51,19 +51,25 @@
         frameReverseLoop = true,
         walkNumber = 1;
     
+    //Set up renderer
     renderer.autoResize = true;
     renderer.backgroundColor = 0xEEEEEE;
     renderer.resize(512, 512);
-    
     document.body.appendChild( renderer.view );
     renderer.render(stage);
     
+    //Get external data
     getEmojis( "emojis.json" );
     getJsonData("tracks.JSON");
     
+    //Wait for asynchronous data to load;
+    //once it's ready, advance to the animation loop
     waitLoad();
     
     
+    //Wait for asynchronous data to load;
+    //once it's ready, advance to the animation loop
+    //To do: if there's a "loading" screen, send information to that screen
     function waitLoad() {
     
         if( actorTexturesReady && jsonDataReady ){
@@ -79,6 +85,9 @@
         
     }
     
+    //Get emoji information from the JSON file
+    //Once the JSON has loaded, load the emoji files into the PIXI loader/cache
+    //After all emojis have been stored in the cache, set actorTexturesReady to true
     function getEmojis( fileName ) {
         
         var oReq = new XMLHttpRequest();
@@ -109,10 +118,13 @@
         
     }
     
+    //Create an actor at position x,y, using one of the specified emojis as a sprite
+    //Returns the actor for storage into the array
     function createActor( x, y, actorTextureKeys ) {
 		
-        console.log('in create actor');
+        //console.log('in create actor');
         
+        //If no emojis are supplied, the actor can use whatever is available
         if( typeof actorTextureKeys == "undefined" || actorTextureKeys.length < 1 ) {
          
             actorTextureKeys = [];
@@ -121,20 +133,23 @@
             
         } 
         
+        //Create a sprite from one of the specified emojis, picked at random
         var textureNumber = Math.floor(Math.random() * (actorTextureKeys.length)),
             textureChoice = actorTextureKeys[textureNumber],
             actor = new PIXI.Sprite(actorTextures[textureChoice]);
 
-        console.log( actorTextureKeys, textureNumber );
+        //console.log( actorTextureKeys, textureNumber );
         
+        //Set the anchor point to be in the center (for rotation and coordinate position)
         actor.anchor.set( 0.5, 0.5 );
         
+        //Make the actor interactive
         actor = actorMakeInteractive( actor );
         
         //setActorInitials( sprite, x, y, vx, vy, gravityOn, attractToOrigin, originBreakDistance, attractToClick );
 		actor = setActorInitials( actor, x, y, 0, 0, true, true, 100, true );
 		
-		// add it to the stage
+		// add the actor to the stage
 		stage.addChild( actor );
         
         return actor;
@@ -143,11 +158,15 @@
     
     function animationLoop() {
         
-        //In case we're not using integer speeds
+        //In case we're not using integer speeds, make sure that the frame is an integer
         var roundedOnFrame = Math.floor( onFrame );
-//        console.log(roundedOnFrame);
+
+        //console.log(roundedOnFrame);
         getTracksFromFrame( roundedOnFrame );
         
+        //Tracks loop:
+        //Attach/Detach actors to track
+        //Update origin of actor
         tracks.forEach( function( track, t ) {
            
             //if the track is visible in this walk
@@ -161,7 +180,7 @@
                     
                 } else {
                     
-                    //if so, update the actor
+                    //if so, update the actor origin
                     if( typeof track.x !== "undefined" && typeof track.y !== "undefined" ) {
                         
                         track.actor.originx = parseFloat(track.x) - offsetX;
@@ -175,14 +194,13 @@
                 
                 //if the track is invisible in this walk
                 
-                //detach any attached actors
+                //Remove attractions of actor to track and origin
+                //Detach any attached actors
                 if( track.actor !== false && track.actor !== null) {
                     
                     track.actor.attachedToTrack = false;
-                    
                     track.actor.attractedToOrigin = false;
                     track.actor.attractToOrigin = false;
-                        
                     track.actor = null;
       
                 } 
@@ -192,6 +210,9 @@
             
         });
         
+        
+        //Actors loop
+        //Calculate velocities according to gravity, collisions, and other attractions
         actors.forEach( function( actor, i ) {
             
             //Add to velocity toward the ground
@@ -201,9 +222,11 @@
             
             }
             
+            //Deal with wall collisions
             actor = actorDetectWallCollisions( actor );
             
             
+            //Deal with attractions
             if( actor.attractedToMouse ) {
                 
                 actor = actorSetAttraction( actor, interaction.eventData.data.global, 2, 3, false );
@@ -218,14 +241,18 @@
                 
             }
             
+            //Update the position
             actor.y += actor.velocity.y;
             actor.x += actor.velocity.x;
             
             
         });
         
+        //Increment the frame
+        //To do: in the actual app, we would get the frame from the decoder
         onFrame += frameSpeed;
         
+        //If we're not within bounds, either reverse the loop or restart the loop (according to frameReverseLoop
         if( onFrame > lastFrame || onFrame < firstFrame ) {
             
             if( frameReverseLoop ) {
@@ -241,15 +268,18 @@
             
         }
         
+        //Continue the loop and render the stage
         requestAnimationFrame( animationLoop );
         renderer.render(stage);
         
     }
     
+    //Add a new actor to the track
     function newActorOnTrack( t ) {
         
         var theTrack = tracks[t]
-        //add one
+        
+        //create an actor and set it attached to the given track
         var newActor = createActor( parseFloat(theTrack.x) - offsetX, parseFloat(theTrack.y) - offsetY, theTrack.emojis );
         newActor.attachedToTrack = t;
 
@@ -324,7 +354,7 @@
         this.dragging = false;
         this.attractedToMouse = false;
         this.attractedToOrigin = actorOriginAttracted( this );
-//        this.gravity = true;
+        
         //Once origin attraction is broken, it cannot be replaced
         this.attractToOrigin = ( this.attractToOrigin && !this.attractedToOrigin )?false:this.attractToOrigin
 
@@ -355,6 +385,7 @@
         
     }
     
+    //Calculate the actor's attraction to a point of origin
     function actorSetAttraction( actor, pointOfAttraction, threshold, powerOfAttraction, linear ){
         
         //Set defaults
@@ -364,7 +395,8 @@
         
         var multX = 1, multY = 1;
         
-        //If the actor is within the threshold, it is stopped, and it's position is set to coincide with the point of attraction
+        //If the actor is within the threshold (error):
+        //it is stopped, and its position is set to coincide with the point of attraction
         if( Math.abs( pointOfAttraction.x - actor.x ) <= threshold ) {
                     
             actor.velocity.x = 0;
@@ -381,6 +413,7 @@
             
         } 
         
+        //If attraction is set to be linear, simply direct the actor's velocity toward that point
         if( linear ) {
             
             actor.velocity.x = Math.sign( pointOfAttraction.x - actor.x ) * multX;
@@ -388,6 +421,7 @@
             
         } else {
         
+            //Otherwise, use the calculate attraction formula
             var attraction = calculateAttraction( actor, pointOfAttraction, powerOfAttraction )
             actor.velocity.x += attraction.x * multX;
             actor.velocity.y += attraction.y * multY;
@@ -398,12 +432,13 @@
         
     }
     
+    //Deal with 
     function actorDetectWallCollisions( actor ){
         
-        //Ball touching floor
+        //Actor touching floor
         if( ( actor.y + actor.height/2 ) >= renderer.height ){
 
-            //Ball moving slow enough, stop it
+            //Actor moving slow enough, stop it
             if( actor.velocity.y <= 5*gravity ) {
 
                 actor.velocity.y = 0;
@@ -420,7 +455,7 @@
             //Affect of friction
             actor.velocity.x -= ( actor.velocity.x * friction);
             
-            //Ball moving slow enough, stop it
+            //Actor moving slow enough, stop it
             if( Math.abs(actor.velocity.x) <= 10 * friction ) {
 
                 actor.velocity.x = 0;
@@ -429,6 +464,7 @@
 
         }
 
+        //Actor touching wall (right)
         if( ( actor.x + actor.width/2 ) >= renderer.width ){
 
                 //Bounce
@@ -437,6 +473,7 @@
 
         }
 
+        //Actor touching wall (left)
         if( ( actor.x - actor.width/2 ) <= 0 ){
 
                 //Bounce
@@ -449,6 +486,9 @@
         
     }
     
+    //Calculate the attraction of the actor to a point of attraction
+    //The return value is an object {x, y} which represents the amount added to the velocity
+    //
     function calculateAttraction( actor, pointOfAttraction, powerOfAttraction ) {
      
         
@@ -458,20 +498,24 @@
             distA = getDistance(actor.x, actor.y, pointOfAttraction.x, pointOfAttraction.y),
             attraction;
         
-         attraction = {  x: Math.abs( distX ) <= actor.velocity.x ? -actor.velocity.x + distX : Math.sign( distX ) * powerOfAttraction,
+        //The attraction is calculated as follows:
+        //If the actor's vector velocity would land on or surpass the position of the point of attraction
+        //  the attraction should have it land at the point of attraction
+        //Otherwise, simply linear attraction times the power of attraction will be added to the velocity
+        attraction = {  x: Math.abs( distX ) <= actor.velocity.x ? -actor.velocity.x + distX : Math.sign( distX ) * powerOfAttraction,
                          y: Math.abs( distY ) <= actor.velocity.y ? -actor.velocity.y + distY :Math.sign( distY ) * powerOfAttraction };
             
         //All of these end up with something similar to an orbit. Cool, but not right for this project
-//            var vectorA = powerOfAttraction/Math.pow( getDistance(actor.x, actor.y, pointOfAttraction.x, pointOfAttraction.y), 2);
-              
-//            attraction = { x: (sumXY == 0) ? 0 : vectorA * distX/sumXY, 
-//                           y: (sumXY == 0) ? 0 : vectorA * distY/sumXY };
-            
-//            attraction = {  x: Math.sign( distX ) * Math.sqrt( Math.abs( distX ) )/10,
-//                            y: Math.sign( distY ) * Math.sqrt( Math.abs( distY ) )/10 };
-            
-//            attraction = {  x: (sumXY == 0) ? 0 : Math.sign( distX ) * Math.abs( distX/sumXY )/10,
-//                            y: (sumXY == 0) ? 0 : Math.sign( distY ) * Math.abs( distY/sumXY )/10 };
+        //            var vectorA = powerOfAttraction/Math.pow( getDistance(actor.x, actor.y, pointOfAttraction.x, pointOfAttraction.y), 2);
+
+        //            attraction = { x: (sumXY == 0) ? 0 : vectorA * distX/sumXY, 
+        //                           y: (sumXY == 0) ? 0 : vectorA * distY/sumXY };
+
+        //            attraction = {  x: Math.sign( distX ) * Math.sqrt( Math.abs( distX ) )/10,
+        //                            y: Math.sign( distY ) * Math.sqrt( Math.abs( distY ) )/10 };
+
+        //            attraction = {  x: (sumXY == 0) ? 0 : Math.sign( distX ) * Math.abs( distX/sumXY )/10,
+        //                            y: (sumXY == 0) ? 0 : Math.sign( distY ) * Math.abs( distY/sumXY )/10 };
             
            
         //console.log( attraction );
@@ -479,6 +523,8 @@
         
     }
     
+    //Set actor initials
+    //Todo: merge this with the create actor function
     function setActorInitials( sprite, x, y, vx, vy, gravityOn, attractToOrigin, originBreakDistance, attractToClick ){
     
         // move the sprite to its designated position and set up original distance
@@ -497,6 +543,7 @@
         
     }
     
+    //Get the track json data
     function getJsonData( fileName ) {
         
         var oReq = new XMLHttpRequest();
@@ -506,6 +553,7 @@
         
     }
     
+    //Parse the track data
     function parseJsonData(e) {
 
         //Will be returned as an array of objects
@@ -524,6 +572,7 @@
         
     }
     
+    //Set up the tracks from the JSON data
     function initTracksFromJSON( ){
         
         //Get the last "Frame"
@@ -548,6 +597,7 @@
         
     }
     
+    //Get position, scale, etc for the tracks
     function getTracksFromFrame( f ) {
         
 //        console.log( f );
@@ -565,6 +615,8 @@
         
     }
     
+    //Not for production
+    //Draw the paths
     function plotData( numActors ) {
         
         for( var a = 0; a < numActors; a++ ){
@@ -613,25 +665,18 @@
         
     }
     
+    //Set up the frame limits
     function setFrameLimits() {
      
-//        console.log( 'in frame limits' );
         var minFrame=0,
             maxFrame=0;
         
-//        jsonData.forEach( function(e, i) {
-//           
-//            if( e.f > maxFrame ) { maxFrame = e.f }
-//            if( e.f < minFrame ) { minFrame = e.f }
-//            
-//        });
-        
         onFrame = firstFrame = minFrame;
-//        console.log( jsonData.length );
-        lastFrame = maxFrame = jsonData.length;
+        lastFrame = maxFrame = jsonData.length -1;
         
     }
     
+    //Setup the canvas size based on the 
     function setCanvasSize( atLeastX, atLeastY ) {
      
         atLeastX = typeof atLeastX == "undefined" ? 100 : atLeastX;
@@ -653,6 +698,8 @@
         
     }
     
+    //Get the position from the frame data
+    //Too small, replace
     function getPositionFromFrame( frame, actorNum ) {
      
 //        console.log( frame, actorNum );
@@ -663,6 +710,7 @@
     
     //Auxiliary functions
     
+    //get the distance between two points
     function getDistance( ax, ay, bx, by ){
         
         var a = (bx - ax),
