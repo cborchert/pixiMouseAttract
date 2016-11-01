@@ -40,8 +40,8 @@
         velocityFollowOrigin = 3,
         gravity = 0.5,
         friction = 0.05,
-        jsonData,
-        jsonDataReady = false,
+        tracksData,
+        tracksDataReady = false,
         offsetX = 0,
         offsetY = 0,
         firstFrame,
@@ -72,7 +72,7 @@
     //To do: if there's a "loading" screen, send information to that screen
     function waitLoad() {
     
-        if( actorTexturesReady && jsonDataReady ){
+        if( actorTexturesReady && tracksDataReady ){
             
             actorTexture = actorTextures["banana"];
             animationLoop();
@@ -115,6 +115,64 @@
         
         oReq.open("get", fileName, true);
         oReq.send();
+        
+    }
+    
+    //Get the track json data
+    function getTracksData( fileName ) {
+        
+        var oReq = new XMLHttpRequest();
+        oReq.onload = function(e){
+            
+            //Will be returned as an array of objects
+            tracksData = JSON.parse( this.responseText );
+
+            //set frame limits
+            var minFrame=0,
+                maxFrame=0;
+
+            onFrame = firstFrame = minFrame;
+            lastFrame = maxFrame = tracksData.length -1;
+
+            //Initiate the tracks from the JSON
+            initTracksFromJSON();
+
+            //Set canvas size
+            setCanvasSize( 1000, 1000 );
+
+            //plot the tracks as lines
+            plotData();
+
+            //The json data is ready
+            tracksDataReady = true;
+            
+        };
+        
+        oReq.open("get", fileName, true);
+        oReq.send();
+        
+    }
+    
+    //Set up the tracks from the JSON data
+    function initTracksFromJSON( ){
+        
+        //Get the last "Frame"
+        var tracksInitData = tracksData[ tracksData.length - 1 ];
+        
+        for( var t = 0; t < tracksInitData.length; t++ ) {
+            
+            tracks.push({
+                
+                emojis: tracksInitData[t].emojis,       
+                actor: null,
+                x: null,
+                y: null,
+                scale: 0,
+                visible: false,
+                
+            });
+            
+        }
         
     }
     
@@ -444,7 +502,7 @@
         
     }
     
-    //Deal with 
+    //Deal with collisions
     function actorDetectWallCollisions( actor ){
         
         //Actor touching floor
@@ -500,7 +558,6 @@
     
     //Calculate the attraction of the actor to a point of attraction
     //The return value is an object {x, y} which represents the amount added to the velocity
-    //
     function calculateAttraction( actor, pointOfAttraction, powerOfAttraction ) {
      
         
@@ -522,75 +579,18 @@
         
     }
     
-    //Get the track json data
-    function getTracksData( fileName ) {
-        
-        var oReq = new XMLHttpRequest();
-        oReq.onload = function(e){
-            
-            //Will be returned as an array of objects
-            jsonData = JSON.parse( this.responseText );
-
-            //set frame limits
-            var minFrame=0,
-                maxFrame=0;
-
-            onFrame = firstFrame = minFrame;
-            lastFrame = maxFrame = jsonData.length -1;
-
-            //Initiate the tracks from the JSON
-            initTracksFromJSON();
-
-            //Set canvas size
-            setCanvasSize( 1000, 1000 );
-
-            //plot the tracks as lines
-            plotData();
-
-            //The json data is ready
-            jsonDataReady = true;
-            
-        };
-        
-        oReq.open("get", fileName, true);
-        oReq.send();
-        
-    }
-    
-    //Set up the tracks from the JSON data
-    function initTracksFromJSON( ){
-        
-        //Get the last "Frame"
-        var tracksData = jsonData[ jsonData.length - 1 ];
-        
-        for( var t = 0; t < tracksData.length; t++ ) {
-            
-            tracks.push({
-                
-                emojis: tracksData[t].emojis,       
-                actor: null,
-                x: null,
-                y: null,
-                scale: 0,
-                visible: false,
-                
-            });
-            
-        }
-        
-    }
     
     //Get position, scale, etc for the tracks for the current frame
     function getTracksFromFrame( f ) {
     
-        var tracksData = jsonData[ f ];
+        var trackData = tracksData[ f ];
         
         for( var t = 0; t < tracks.length; t++ ) {
             
-            tracks[t].x= tracksData[t].x;
-            tracks[t].y= tracksData[t].y;
-            tracks[t].scale= tracksData[t].scale;
-            tracks[t].visible= tracksData[t].visible;
+            tracks[t].x= trackData[t].x;
+            tracks[t].y= trackData[t].y;
+            tracks[t].scale= trackData[t].scale;
+            tracks[t].visible= trackData[t].visible;
             
         }
         
@@ -608,9 +608,9 @@
             var thePoint = {f: 0, x: 0, y: 0}
 
             graphics.lineStyle(1, 0x000000);
-            jsonData.forEach( function(e, i) {
+            tracksData.forEach( function(e, i) {
 
-                thePoint = jsonData[i][a];
+                thePoint = tracksData[i][a];
 
                 if( typeof thePoint !== "undefined" ) {
 
@@ -652,7 +652,7 @@
             minX=0,
             minY=0;
         
-        jsonData.forEach( function(e, i) {
+        tracksData.forEach( function(e, i) {
            
             if( e.x - offsetX > maxX ) { maxX = e.x - offsetX; }
             if( e.y - offsetY > maxY ) { maxY = e.y - offsetY; }
