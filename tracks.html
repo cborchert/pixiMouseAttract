@@ -59,7 +59,7 @@
     renderer.render(stage);
     
     //Get external data
-    getEmojis( "emojis.json" );
+    setupEmojis( "emojis.json" );
     getTracksData("tracks.JSON");
     
     //Wait for asynchronous data to load;
@@ -88,7 +88,7 @@
     //Get emoji information from the JSON file
     //Once the JSON has loaded, load the emoji files into the PIXI loader/cache
     //After all emojis have been stored in the cache, set actorTexturesReady to true
-    function getEmojis( fileName ) {
+    function setupEmojis( fileName ) {
         
         var oReq = new XMLHttpRequest();
         oReq.onload = function (e) {
@@ -233,95 +233,26 @@
         //In case we're not using integer speeds, make sure that the frame is an integer
         var roundedOnFrame = Math.floor( onFrame );
 
-        //console.log(roundedOnFrame);
-        getTracksFromFrame( roundedOnFrame );
+        updateTracks( roundedOnFrame );
         
-        //Tracks loop:
-        //Attach/Detach actors to track
-        //Update origin of actor
-        tracks.forEach( function( track, t ) {
-           
-            //if the track is visible in this walk
-            if( typeof track.visible !== "undefined" && track.visible !== false && _.indexOf( track.visible, walkNumber ) > -1 ) {
-                
-                //if an actor is not attached
-                if( track.actor == false || track.actor == null) {
-                    
-                    //attach a new one
-                    newActorOnTrack( t );    
-                    
-                } else {
-                    
-                    //if so, update the actor origin
-                    if( typeof track.x !== "undefined" && typeof track.y !== "undefined" ) {
-                        
-                        track.actor.originx = parseFloat(track.x) - offsetX;
-                        track.actor.originy = parseFloat(track.y) - offsetY;
-                        
-                    }
-                    
-                }
-                
-            } else {
-                
-                //if the track is invisible in this walk
-                
-                //Remove attractions of actor to track and origin
-                //Detach any attached actors
-                if( track.actor !== false && track.actor !== null) {
-                    
-                    track.actor.attachedToTrack = false;
-                    track.actor.attractedToOrigin = false;
-                    track.actor.attractToOrigin = false;
-                    track.actor = null;
-      
-                } 
-                
-                
-            }
-            
-        });
+        //Tracks loop: Attach/Detach actors to track; update origin of actor
+        tracks.forEach( function( track, t ) { updateTrackActors( track, t ); });
         
-        
-        //Actors loop
-        //Calculate velocities according to gravity, collisions, and other attractions
-        actors.forEach( function( actor, i ) {
-            
-            //Add to velocity toward the ground
-            if( actor.gravity && !actor.attractedToOrigin && !actor.attractedToMouse){
-                
-                actor.velocity.y += gravity;
-            
-            }
-            
-            //Deal with wall collisions
-            actor = actorDetectWallCollisions( actor );
-            
-            
-            //Deal with attractions
-            if( actor.attractedToMouse ) {
-                
-                actor = actorSetAttraction( actor, interaction.eventData.data.global, 2, 3, false );
-                
-            } else if(actor.attachedToTrack !== false && actor.attachedToTrack !== null && actor.attachedToTrack > -1) {
-              
-                actor = actorSetAttraction( actor, {x: actor.originx, y: actor.originy}, 2, 3, true );
-                
-            } else if( actor.attractedToOrigin ) {
-                
-                actor = actorSetAttraction( actor, {x: actor.originx, y: actor.originy}, 2, 3, false );
-                
-            }
-            
-            //Update the position
-            actor.y += actor.velocity.y;
-            actor.x += actor.velocity.x;
-            
-            
-        });
+        //Actors loop: Calculate velocities according to gravity, collisions, and other attractions
+        actors.forEach( function( actor, a ) { updateActorVelocity( actor, a ) });
         
         //Increment the frame
-        //To do: in the actual app, we would get the frame from the decoder
+        //TO DO: this will be replaced by a call to the frame number decoder in the actual app
+        incrementFrame();
+        
+        //Continue the loop and render the stage
+        requestAnimationFrame( animationLoop );
+        renderer.render(stage);
+        
+    }
+    
+    function incrementFrame() {
+     
         onFrame += frameSpeed;
         
         //If we're not within bounds, either reverse the loop or restart the loop (according to frameReverseLoop
@@ -340,9 +271,47 @@
             
         }
         
-        //Continue the loop and render the stage
-        requestAnimationFrame( animationLoop );
-        renderer.render(stage);
+    }
+    
+    function updateTrackActors( track, t ) {
+     
+        //if the track is visible in this walk
+        if( typeof track.visible !== "undefined" && track.visible !== false && _.indexOf( track.visible, walkNumber ) > -1 ) {
+
+            //if an actor is not attached
+            if( track.actor == false || track.actor == null) {
+
+                //attach a new one
+                newActorOnTrack( t );    
+
+            } else {
+
+                //if so, update the actor origin
+                if( typeof track.x !== "undefined" && typeof track.y !== "undefined" ) {
+
+                    track.actor.originx = parseFloat(track.x) - offsetX;
+                    track.actor.originy = parseFloat(track.y) - offsetY;
+
+                }
+
+            }
+
+        } else {
+
+            //if the track is invisible in this walk
+
+            //Remove attractions of actor to track and origin
+            //Detach any attached actors
+            if( track.actor !== false && track.actor !== null) {
+
+                track.actor.attachedToTrack = false;
+                track.actor.attractedToOrigin = false;
+                track.actor.attractToOrigin = false;
+                track.actor = null;
+
+            }      
+
+        }
         
     }
     
@@ -359,28 +328,40 @@
         
     }
     
-    /**
-     * Makes sprite interactive, and sets up sprite mouse and touch events
-     * @param {PIXI.Sprite} actor 
-     * @return {PIXI.Sprite} actor
-     */
-    function actorMakeInteractive( actor ) {
+    function updateActorVelocity( actor, a ) {
         
-        
-        // Interactive allows the sprite/actor to respond to mouse and touch events	
-        // Button mode will make the hand cursor appear when you rollover the sprite with your mouse
-		actor.interactive = true;
-		actor.buttonMode = true;
-        
-        // Set behavior for when actor is touched/clicked
-		actor.mousedown = actor.touchstart = actorOnTouch;
-        
-        // Set the behavior for when the touch/mouse is released from the mouse
-		actor.mouseup = actor.mouseupoutside = actor.touchend = actor.touchendoutside = actorOffTouch;
-        
-        return actor;
+        //Add to velocity toward the ground
+        if( actor.gravity && !actor.attractedToOrigin && !actor.attractedToMouse){
+
+            actor.velocity.y += gravity;
+
+        }
+
+        //Deal with wall collisions
+        actor = actorDetectWallCollisions( actor );
+
+
+        //Deal with attractions
+        if( actor.attractedToMouse ) {
+
+            actor = actorSetAttraction( actor, interaction.eventData.data.global, 2, 3, false );
+
+        } else if(actor.attachedToTrack !== false && actor.attachedToTrack !== null && actor.attachedToTrack > -1) {
+
+            actor = actorSetAttraction( actor, {x: actor.originx, y: actor.originy}, 2, 3, true );
+
+        } else if( actor.attractedToOrigin ) {
+
+            actor = actorSetAttraction( actor, {x: actor.originx, y: actor.originy}, 2, 3, false );
+
+        }
+
+        //Update the position
+        actor.y += actor.velocity.y;
+        actor.x += actor.velocity.x;
         
     }
+    
     
     /**
      * If attracted to clicks, the actor will become attracted to the mouse. Other attractions are annulled
@@ -394,7 +375,6 @@
             this.dragging = true;
             this.attractedToMouse = true;
             this.attractedToOrigin = false;
-//            this.gravity = false;
 
             // if is attracted to track
             if( this.attachedToTrack !== false && this.attachedToTrack !== null && this.attachedToTrack > -1 ) {
@@ -581,7 +561,7 @@
     
     
     //Get position, scale, etc for the tracks for the current frame
-    function getTracksFromFrame( f ) {
+    function updateTracks( f ) {
     
         var trackData = tracksData[ f ];
         
